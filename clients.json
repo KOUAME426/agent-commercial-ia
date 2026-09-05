@@ -1,0 +1,8 @@
+{
+  "client_demo": {
+    "nom": "Client D\u00e9mo",
+    "cle_api": "demo-key-123",
+    "credits": 9,
+    "total_utilise": 1
+  }
+}
