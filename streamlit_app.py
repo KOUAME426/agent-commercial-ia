@@ -1,182 +1,113 @@
 import streamlit as st
-import pandas as pd
-import requests
-import time
-import io
 
 # ============================================
-# 1. CONFIGURATION DE LA PAGE
+# CONFIGURATION DE LA PAGE (MODE LARGE)
 # ============================================
 st.set_page_config(
-    page_title="Agent IA - Analyse de Prospects",
-    page_icon="🤖",
-    layout="centered"
+    page_title="Agent IA Commercial",
+    page_icon="🚀",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-st.title("🤖 Agent Commercial IA")
-st.subheader("Analysez automatiquement vos prospects en un clic")
-
 # ============================================
-# 2. SIDEBAR : SAISIE DE LA CLÉ API
+# SIDEBAR (Menu de navigation)
 # ============================================
 with st.sidebar:
-    st.header("🔑 Authentification")
-    api_key = st.text_input(
-        "Entrez votre clé API :",
-        type="password",
-        placeholder="Ex: demo-key-123 ou votre clé personnelle",
-        help="Vous avez reçu cette clé par email après votre achat."
-    )
+    st.image("https://img.icons8.com/fluency/96/null/artificial-intelligence.png", width=80)
+    st.title("Navigation")
     
-    # URL de votre API (à modifier si vous déployez ailleurs)
-    api_url = st.text_input(
-        "URL de l'API :",
-        value="https://agent-commercial-ia.onrender.com/analyser",
-        help="URL de votre serveur API."
-    )
+    # Lien vers la page d'analyse (via le nom de la page)
+    st.page_link("streamlit_app.py", label="🏠 Accueil", icon="🏠")
+    st.page_link("pages/1_📊_Analyse_CSV.py", label="📊 Analyse CSV", icon="📊")
     
+    st.divider()
+    st.caption("Besoin d'une clé API ?")
+    st.caption("Contactez-nous pour un essai gratuit.")
+
+# ============================================
+# PAGE D'ACCUEIL (LANDING PAGE)
+# ============================================
+# 1. HEADER PRINCIPAL
+col1, col2 = st.columns([2, 1])
+with col1:
+    st.title("🚀 Gagnez 10h/semaine sur votre prospection")
+    st.markdown("### L'IA qui analyse vos emails entrants et rédige des réponses commerciales sur-mesure en 2 secondes.")
     st.markdown("---")
-    st.caption("Besoin d'une clé ? Contactez-nous pour acheter des crédits.")
-
-# ============================================
-# 3. UPLOAD DU FICHIER CSV
-# ============================================
-st.markdown("### 📤 Téléchargez votre fichier de prospects")
-
-uploaded_file = st.file_uploader(
-    "Choisissez un fichier CSV",
-    type=["csv"],
-    help="Votre fichier doit contenir une colonne nommée 'email_brut', 'message' ou 'texte'."
-)
-
-# ============================================
-# 4. TRAITEMENT AUTOMATIQUE
-# ============================================
-if uploaded_file is not None and api_key:
-    # Lire le CSV
-    try:
-        df = pd.read_csv(uploaded_file)
-        st.success(f"✅ Fichier chargé avec succès : {len(df)} lignes trouvées.")
-        st.dataframe(df.head(3))
-    except Exception as e:
-        st.error(f"Erreur lors de la lecture du fichier : {e}")
-        st.stop()
-
-    # Vérifier la colonne contenant les emails
-    col_email = None
-    for col in ["email_brut", "message", "contenu", "email", "texte", "mail"]:
-        if col in df.columns:
-            col_email = col
-            break
     
-    if col_email is None:
-        st.error("❌ Aucune colonne valide trouvée. Ajoutez une colonne nommée 'email_brut' ou 'message'.")
-        st.stop()
+    # Boutons CTA
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
+        st.page_link("pages/1_📊_Analyse_CSV.py", label="🔥 Essayer gratuitement", use_container_width=True)
+    with col_btn2:
+        st.markdown("[📅 Voir la démo](#tarifs)", unsafe_allow_html=True)
+
+with col2:
+    st.image("https://img.icons8.com/fluency/300/null/chatbot.png", caption="Votre assistant commercial 24h/24")
+
+# 2. FONCTIONNALITÉS (3 colonnes)
+st.divider()
+st.subheader("✨ Ce que l'agent IA fait pour vous")
+
+col_feat1, col_feat2, col_feat3 = st.columns(3)
+
+with col_feat1:
+    st.markdown("### 🎯 Scoring intelligent")
+    st.write("Chaque prospect reçoit une note de 1 à 10 basée sur le budget, l'urgence et l'intention d'achat.")
     
-    st.info(f"📧 Colonne détectée : **{col_email}** (utilisée comme texte des prospects)")
-
-    # Bouton pour lancer le traitement
-    if st.button("🚀 Lancer l'analyse des prospects", type="primary"):
-        if not api_key:
-            st.error("Veuillez entrer votre clé API dans la barre latérale.")
-            st.stop()
-        
-        # Préparer les résultats
-        resultats = []
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        
-        total = len(df)
-        
-        for index, row in df.iterrows():
-            status_text.text(f"Analyse du prospect {index+1}/{total}...")
-            
-            # Préparer la requête
-            email_text = str(row[col_email])
-            headers = {
-                "X-API-Key": api_key,
-                "Content-Type": "application/json"
-            }
-            payload = {"email": email_text}
-            
-            try:
-                response = requests.post(api_url, json=payload, headers=headers, timeout=30)
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    resultats.append({
-                        "nom_prospect": data.get("nom", ""),
-                        "entreprise": data.get("entreprise", ""),
-                        "score": data.get("score", 0),
-                        "motif_interet": data.get("motif_interet", ""),
-                        "reponse_proposee": data.get("reponse_proposee", "")
-                    })
-                elif response.status_code == 402:
-                    st.error("⛔ Crédits épuisés ! Veuillez recharger votre compte.")
-                    st.stop()
-                else:
-                    resultats.append({
-                        "nom_prospect": "Erreur",
-                        "entreprise": "Erreur",
-                        "score": 0,
-                        "motif_interet": f"Erreur {response.status_code}",
-                        "reponse_proposee": response.text[:100]
-                    })
-            except requests.exceptions.RequestException as e:
-                resultats.append({
-                    "nom_prospect": "Erreur",
-                    "entreprise": "Erreur",
-                    "score": 0,
-                    "motif_interet": "Problème réseau",
-                    "reponse_proposee": str(e)[:100]
-                })
-            
-            # Mettre à jour la progression
-            progress_bar.progress((index + 1) / total)
-            # Pause pour respecter les limites de l'API (optionnel)
-            time.sleep(1)
-        
-        status_text.text("✅ Analyse terminée !")
-        
-        # Fusionner les résultats avec le DataFrame original
-        df_resultats = pd.DataFrame(resultats)
-        df_final = pd.concat([df, df_resultats], axis=1)
-        
-        # Afficher l'aperçu
-        st.success(f"✅ Analyse terminée avec succès ! {len(df_final)} lignes traitées.")
-        st.dataframe(df_final.head(5))
-        
-        # Bouton de téléchargement
-        csv_buffer = io.StringIO()
-        df_final.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
-        csv_data = csv_buffer.getvalue()
-        
-        st.download_button(
-            label="📥 Télécharger le fichier enrichi (CSV)",
-            data=csv_data,
-            file_name="prospects_analyses.csv",
-            mime="text/csv"
-        )
-
-elif uploaded_file is not None and not api_key:
-    st.warning("⚠️ Veuillez entrer votre clé API dans la barre latérale pour commencer.")
-
-else:
-    st.info("👈 Commencez par télécharger un fichier CSV dans la zone ci-dessus.")
-    st.markdown("""
-    **Format attendu :**
-    - Une colonne contenant le texte de l'email ou du message.
-    - Noms autorisés : `email_brut`, `message`, `contenu`, `email`, `texte`, `mail`.
-    - Exemple : 
+with col_feat2:
+    st.markdown("### 💬 Réponses personnalisées")
+    st.write("Fini les réponses génériques. L'IA rédige un brouillon commercial adapté à chaque email.")
     
-    | email_brut |
-    |------------|
-    | "Bonjour, je suis Paul..." |
-    | "Salut, j'ai un budget..." |
-    """)
+with col_feat3:
+    st.markdown("### 📊 Export instantané")
+    st.write("Téléchargez un fichier CSV enrichi prêt à être importé dans votre CRM.")
 
-# ============================================
-# 5. PIED DE PAGE (footer)
-# ============================================
-st.markdown("---")
-st.caption("🔒 Toutes les communications sont sécurisées. Vos données ne sont pas stockées sur nos serveurs.")
+# 3. TÉMOIGNAGE / PREUVE SOCIALE
+st.divider()
+st.subheader("💬 Ce que disent les premiers testeurs")
+st.info("""
+*"Avant, je perdais 30 min par jour à trier mes emails. Maintenant, l'IA me dit directement qui appeler en premier. C'est un gain de temps phénoménal !"*  
+— **Marc D., Dirigeant InnovTech**
+""")
+
+# 4. TARIFS (LE CŒUR DE LA PAGE)
+st.divider()
+st.subheader("💰 Tarifs simples et transparents")
+st.markdown("Aucun abonnement caché. Vous payez uniquement les analyses que vous utilisez.")
+
+col_prix1, col_prix2, col_prix3 = st.columns(3)
+
+with col_prix1:
+    st.markdown("### 🆓 Découverte")
+    st.markdown("**10 crédits**")
+    st.markdown("#### **GRATUIT**")
+    st.write("Idéal pour tester la qualité de l'IA.")
+    st.page_link("pages/1_📊_Analyse_CSV.py", label="S'inscrire gratuitement", use_container_width=True)
+
+with col_prix2:
+    st.markdown("### 🚀 Startup")
+    st.markdown("**200 crédits**")
+    st.markdown("#### **79 €**")
+    st.write("Parfait pour un commercial ou une petite équipe.")
+    st.button("Contacter pour acheter", key="buy_startup", use_container_width=True, disabled=True)
+
+with col_prix3:
+    st.markdown("### 💼 Business")
+    st.markdown("**1000 crédits**")
+    st.markdown("#### **299 €**")
+    st.write("Pour les équipes commerciales et les agences.")
+    st.button("Contacter pour acheter", key="buy_business", use_container_width=True, disabled=True)
+
+# Note explicative
+st.caption("💡 *Le paiement se fait par virement ou PayPal. Les crédits sont valables 1 an.*")
+
+# 5. FOOTER
+st.divider()
+col_foot1, col_foot2, col_foot3 = st.columns(3)
+with col_foot1:
+    st.write("**Agent Commercial IA** v1.0")
+with col_foot2:
+    st.write("🔒 Données sécurisées - Aucun stockage")
+with col_foot3:
+    st.write("📧 contact@votre-entreprise.fr (Remplacez par votre email)")
